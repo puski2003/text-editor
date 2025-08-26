@@ -17,6 +17,9 @@ import android.os.Environment
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import kotlin.text.Regex
+import com.example.texteditor.compiler.CompilerService
+import com.example.texteditor.compiler.CompileResponse
+import com.example.texteditor.compiler.CompilerError
 
 class TextEditorViewModel : ViewModel() {
     
@@ -82,6 +85,18 @@ class TextEditorViewModel : ViewModel() {
     // Error/status messages
     private val _statusMessage = MutableStateFlow<String?>(null)
     val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
+    
+    // Add these new properties
+    private val compilerService = CompilerService()
+    
+    private val _compileErrors = MutableStateFlow<List<CompilerError>>(emptyList())
+    val compileErrors: StateFlow<List<CompilerError>> = _compileErrors.asStateFlow()
+    
+    private val _isCompiling = MutableStateFlow(false)
+    val isCompiling: StateFlow<Boolean> = _isCompiling.asStateFlow()
+    
+    private val _compileOutput = MutableStateFlow<String?>(null)
+    val compileOutput: StateFlow<String?> = _compileOutput.asStateFlow()
     
     init {
         // Initialize with default workspace
@@ -707,6 +722,61 @@ class TextEditorViewModel : ViewModel() {
             }
         } catch (e: Exception) {
             _statusMessage.value = "Error saving file as: ${e.message}"
+        }
+    }
+
+    // Add this method
+    fun compileCurrentFile() {
+        if (_currentFilePath.value?.endsWith(".kt") != true) {
+            _statusMessage.value = "Only Kotlin files can be compiled"
+            return
+        }
+        
+        viewModelScope.launch {
+            _isCompiling.value = true
+            _statusMessage.value = "Compiling..."
+            
+            try {
+                val response = compilerService.compileCode(
+                    code = _textFieldValue.value.text,
+                    fileName = _currentFile.value ?: "temp.kt"
+                )
+                
+                _compileErrors.value = response.errors
+                _compileOutput.value = response.output
+                
+                if (response.success) {
+                    _statusMessage.value = "Compilation successful"
+                } else {
+                     println()
+                    _statusMessage.value = "Compilation failed: ${response.errors.size} errors"
+                }
+            } catch (e: Exception) {
+                _statusMessage.value = "Compilation error: ${e.message}"
+                _compileErrors.value = emptyList()
+            } finally {
+                _isCompiling.value = false
+            }
+        }
+    }
+    
+    fun clearCompileErrors() {
+        _compileErrors.value = emptyList()
+        _compileOutput.value = null
+    }
+    
+    fun setCompilerServerUrl(url: String) {
+        compilerService.setServerUrl(url)
+    }
+    
+    fun testCompilerConnection() {
+        viewModelScope.launch {
+            val isConnected = compilerService.testConnection()
+            _statusMessage.value = if (isConnected) {
+                "Compiler server connected"
+            } else {
+                "Cannot connect to compiler server"
+            }
         }
     }
 

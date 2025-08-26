@@ -29,6 +29,7 @@ fun CodeEditor(
     onValueChange: (TextFieldValue) -> Unit,
     currentFile: String?,
     currentFilePath: String?,
+    isFileExplorerVisible: Boolean, // Add this parameter
     onToggleFileExplorer: () -> Unit,
     onNewFile: () -> Unit,
     onSaveFile: () -> Unit,
@@ -39,6 +40,8 @@ fun CodeEditor(
     onUndo: () -> Unit,
     onRedo: () -> Unit,
     onShowFindReplace: () -> Unit,
+    onCompile: () -> Unit,
+    isCompiling: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -148,13 +151,12 @@ fun CodeEditor(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(4.dp).fillMaxHeight(0.05f),
+                    .padding(4.dp)
+                    .fillMaxHeight(0.05f)
+                    .widthIn(min = 200.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
-            )
-            {
-
-
-                IconButton(onClick = onSaveFile) {
+            ) {
+                IconButton(onClick = onSaveFile, modifier = Modifier.weight(1f)) {
                     Icon(
                         imageVector = ImageVector.vectorResource(R.drawable.outline_save_24),
                         contentDescription = "Save File",
@@ -163,7 +165,7 @@ fun CodeEditor(
                     )
                 }
 
-                IconButton(onClick = onSaveAsFile) {
+                IconButton(onClick = onSaveAsFile, modifier = Modifier.weight(1f)) {
                     Icon(
                         imageVector = ImageVector.vectorResource(R.drawable.baseline_save_as_24),
                         contentDescription = "Save As",
@@ -179,76 +181,84 @@ fun CodeEditor(
                     color = Color.Gray
                 )
 
-                // Edit operations
-                IconButton(onClick = onUndo) {
-                    Icon(
-                        imageVector = ImageVector.vectorResource(R.drawable.outline_undo_24),
-                        contentDescription = "Undo",
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
+                // Show clipboard operations only when file explorer is hidden
+                if (!isFileExplorerVisible) {
+                    // Clipboard operations
+                    IconButton(onClick = onCut, modifier = Modifier.weight(1f)) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(R.drawable.outline_content_cut_24),
+                            contentDescription = "Cut",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    IconButton(onClick = onCopy, modifier = Modifier.weight(1f)) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(R.drawable.baseline_file_copy_24),
+                            contentDescription = "Copy",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    IconButton(onClick = onPaste, modifier = Modifier.weight(1f)) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(R.drawable.baseline_content_paste_24),
+                            contentDescription = "Paste",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    Divider(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(1.dp),
+                        color = Color.Gray
                     )
+                    // Compile button (only show for Kotlin files)
+                    if (currentFilePath?.endsWith(".kt") == true) {
+                        IconButton(
+                            onClick = onCompile,
+                            enabled = !isCompiling,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            if (isCompiling) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = "Compile",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
                 }
-
-                IconButton(onClick = onRedo) {
-                    Icon(
-                        imageVector =ImageVector.vectorResource(R.drawable.outline_redo_24),
-                        contentDescription = "Redo",
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-
-                Divider(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(1.dp),
-                    color = Color.Gray
-                )
-
-                // Clipboard operations
-                IconButton(onClick = onCut) {
-                    Icon(
-                        imageVector = ImageVector.vectorResource(R.drawable.outline_content_cut_24),
-                        contentDescription = "Cut",
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-
-                IconButton(onClick = onCopy) {
-                    Icon(
-                        imageVector = ImageVector.vectorResource(R.drawable.baseline_file_copy_24),
-                        contentDescription = "Copy",
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-
-                IconButton(onClick = onPaste) {
-                    Icon(
-                        imageVector = ImageVector.vectorResource(R.drawable.baseline_content_paste_24),
-                        contentDescription = "Paste",
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-
-                Divider(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(1.dp),
-                    color = Color.Gray
-                )
 
                 // Find and Replace
-                IconButton(onClick = onShowFindReplace,) {
+                IconButton(onClick = onShowFindReplace, modifier = Modifier.weight(1f)) {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Find and Replace",
                         tint = Color.White,
-
+                        modifier = Modifier.size(16.dp)
                     )
                 }
+
+                Divider(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(1.dp),
+                    color = Color.Gray
+                )
+
 
             }
         }

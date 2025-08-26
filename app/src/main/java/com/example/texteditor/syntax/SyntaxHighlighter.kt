@@ -1,11 +1,15 @@
 package com.example.texteditor.syntax
 
 import android.util.Log
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
+import com.example.texteditor.compiler.CompilerError
+import com.example.texteditor.compiler.ErrorSeverity
 
 class SyntaxHighlighter(private val configuration: SyntaxConfiguration) {
     
@@ -18,28 +22,28 @@ class SyntaxHighlighter(private val configuration: SyntaxConfiguration) {
         }
     }
     
-    fun highlightText(text: String, fileExtension: String?): AnnotatedString {
+    fun highlightText(
+        text: String, 
+        fileExtension: String?, 
+        compileErrors: List<CompilerError> = emptyList()
+    ): AnnotatedString {
         Log.d(TAG, "=== Starting highlight for extension: '$fileExtension' ===")
         Log.d(TAG, "Text length: ${text.length}")
-        Log.d(TAG, "Text preview: '${text.take(50)}...'")
+        Log.d(TAG, "Compile errors: ${compileErrors.size}")
         
         val languageRule = findLanguageRule(fileExtension)
         if (languageRule == null) {
             Log.w(TAG, "No language rule found for extension: $fileExtension")
-            return AnnotatedString(text)
+            return highlightErrors(AnnotatedString(text), text, compileErrors)
         }
         
         Log.d(TAG, "Using language rule: ${languageRule.name}")
-        Log.d(TAG, "Keywords count: ${languageRule.keywords.size}")
-        Log.d(TAG, "Sample keywords: ${languageRule.keywords.take(5)}")
         
         val theme = configuration.theme
-        Log.d(TAG, "Theme colors - Keywords: ${theme.keywords}, Strings: ${theme.strings}")
         
-        return buildAnnotatedString {
+        val syntaxHighlighted = buildAnnotatedString {
             var currentIndex = 0
             val textLength = text.length
-            var highlightedCount = 0
             
             while (currentIndex < textLength) {
                 val remainingText = text.substring(currentIndex)
@@ -65,7 +69,6 @@ class SyntaxHighlighter(private val configuration: SyntaxConfiguration) {
                             append(commentText)
                         }
                         currentIndex = endOfLine
-                        highlightedCount++
                     }
                     
                     // Handle strings
@@ -83,7 +86,6 @@ class SyntaxHighlighter(private val configuration: SyntaxConfiguration) {
                             append(stringText)
                         }
                         currentIndex += stringText.length
-                        highlightedCount++
                     }
                     
                     // Handle words (potential keywords)
@@ -97,7 +99,6 @@ class SyntaxHighlighter(private val configuration: SyntaxConfiguration) {
                                 withStyle(SpanStyle(color = theme.keywords, fontWeight = FontWeight.Bold)) {
                                     append(wordMatch)
                                 }
-                                highlightedCount++
                             } else {
                                 withStyle(SpanStyle(color = theme.default)) {
                                     append(wordMatch)
@@ -119,7 +120,6 @@ class SyntaxHighlighter(private val configuration: SyntaxConfiguration) {
                                 append(numberMatch)
                             }
                             currentIndex += numberMatch.length
-                            highlightedCount++
                         } else {
                             append(remainingText[0])
                             currentIndex++
@@ -132,7 +132,6 @@ class SyntaxHighlighter(private val configuration: SyntaxConfiguration) {
                             append(remainingText[0])
                         }
                         currentIndex++
-                        highlightedCount++
                     }
                     
                     // Default case
@@ -144,9 +143,56 @@ class SyntaxHighlighter(private val configuration: SyntaxConfiguration) {
                     }
                 }
             }
+        }
+        
+        // Apply error highlighting on top of syntax highlighting
+        return highlightErrors(syntaxHighlighted, text, compileErrors)
+    }
+    
+    private fun highlightErrors(
+        annotatedString: AnnotatedString,
+        originalText: String,
+        errors: List<CompilerError>
+    ): AnnotatedString {
+        if (errors.isEmpty()) return annotatedString
+        
+        return buildAnnotatedString {
+            append(annotatedString)
             
-            Log.d(TAG, "=== Highlighting complete ===")
-            Log.d(TAG, "Total highlighted elements: $highlightedCount")
+            val lines = originalText.lines()
+            
+            errors.forEach { error ->
+                if (error.line > 0 && error.line <= lines.size) {
+                    val lineIndex = error.line - 1
+                    var lineStartIndex = 0
+                    
+                    // Calculate the start index of the error line
+                    for (i in 0 until lineIndex) {
+                        lineStartIndex += lines[i].length + 1 // +1 for newline
+                    }
+                    
+                    val lineLength = lines[lineIndex].length
+                    val errorStart = lineStartIndex + (error.column - 1).coerceIn(0, lineLength)
+                    val errorEnd = (errorStart + 1).coerceAtMost(lineStartIndex + lineLength)
+                    
+                    if (errorStart < originalText.length) {
+                        val errorColor = when (error.severity) {
+                            ErrorSeverity.ERROR -> Color.Red
+                            ErrorSeverity.WARNING -> Color(0xFFFF9800) // Orange
+                            ErrorSeverity.INFO -> Color(0xFF2196F3) // Blue
+                        }
+                        
+                        addStyle(
+                            style = SpanStyle(
+                                textDecoration = TextDecoration.Underline,
+                                color = errorColor
+                            ),
+                            start = errorStart,
+                            end = errorEnd
+                        )
+                    }
+                }
+            }
         }
     }
     

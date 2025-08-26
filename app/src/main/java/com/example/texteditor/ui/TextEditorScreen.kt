@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.texteditor.ui.components.CodeEditor
+import com.example.texteditor.ui.components.CompileErrorPanel  // Add this import
 import com.example.texteditor.ui.components.FileExplorer
 import com.example.texteditor.ui.components.FindReplaceDialog
 import com.example.texteditor.ui.components.SaveAsDialog
@@ -54,7 +55,9 @@ fun TextEditorScreen(
     val replaceText by viewModel.replaceText.collectAsState()
     val matchCase by viewModel.matchCase.collectAsState()
     val matchWholeWord by viewModel.matchWholeWord.collectAsState()
-    
+    val compileErrors by viewModel.compileErrors.collectAsState()
+    val isCompiling by viewModel.isCompiling.collectAsState()
+    val compileOutput by viewModel.compileOutput.collectAsState()
     // Save As dialog state
     var showSaveAsDialog by remember { mutableStateOf(false) }
     
@@ -149,6 +152,7 @@ fun TextEditorScreen(
                     onValueChange = { viewModel.updateText(it) },
                     currentFile = currentFile,
                     currentFilePath = viewModel.currentFilePath.collectAsState().value,
+                    isFileExplorerVisible = isFileExplorerVisible, // Add this line
                     onToggleFileExplorer = { viewModel.toggleFileExplorer() },
                     onNewFile = { viewModel.newFile() },
                     onSaveFile = { viewModel.saveCurrentFile(context) },
@@ -159,7 +163,11 @@ fun TextEditorScreen(
                     onUndo = { viewModel.undo() },
                     onRedo = { viewModel.redo() },
                     onShowFindReplace = { viewModel.showFindReplace() },
-                    modifier = Modifier.weight(1f)
+                    onCompile = { viewModel.compileCurrentFile() },
+                    isCompiling = isCompiling,
+                    modifier = Modifier
+                        .weight(1f)
+                        .widthIn(min = 300.dp)
                 )
             }
             
@@ -170,6 +178,14 @@ fun TextEditorScreen(
                 currentFile = currentFile,
                 isDirty = isDirty
             )
+            
+            // Show compile errors if any
+            if (compileErrors.isNotEmpty()) {
+                CompileErrorPanel(
+                    errors = compileErrors,
+                    onDismiss = { viewModel.clearCompileErrors() }
+                )
+            }
         }
         
         // Snackbar for status messages
