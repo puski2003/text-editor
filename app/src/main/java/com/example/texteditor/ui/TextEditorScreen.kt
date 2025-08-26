@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Snackbar
@@ -15,6 +16,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -29,6 +31,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.documentfile.provider.DocumentFile
+import kotlin.math.abs
 
 @Composable
 fun TextEditorScreen(
@@ -83,21 +86,53 @@ fun TextEditorScreen(
         }
     }
 
+    // Animate the width of the file explorer
+
+
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
+        Column(modifier = Modifier
+            .fillMaxSize()
+            .systemBarsPadding()
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        // No action needed on drag end
+                    }
+                ) { change, dragAmount ->
+                    val threshold = 50f // Minimum drag distance to trigger action
+                    
+                    if (abs(dragAmount) > threshold) {
+                        if (dragAmount > threshold) {
+                            // Swiping right - show file explorer
+                            if (!isFileExplorerVisible) {
+                                viewModel.toggleFileExplorer()
+                            }
+                        } else if (dragAmount < -threshold) {
+                            // Swiping left - hide file explorer
+                            if (isFileExplorerVisible) {
+                                viewModel.toggleFileExplorer()
+                            }
+                        }
+                    }
+                }
+            }) {
+            
             Row(modifier = Modifier
                 .weight(1f)
-                .fillMaxWidth()
-                .systemBarsPadding()) {
+                .fillMaxWidth()) {
                 
                 // File Explorer with animated width
-                if (isFileExplorerVisible) {
-                    Surface {
+                Surface(
+                    modifier = Modifier
+
+                        .clipToBounds()
+                ) {
+                    if (isFileExplorerVisible) {
                         FileExplorer(
                             files = files,
-                            onFileClick = { fileName, filePath -> viewModel.openFile(fileName, filePath, context) }, // Pass context directly
-                            onCreateFile = { fileName -> viewModel.createNewFile(fileName, context) }, // Pass context directly
-                            onCreateDirectory = { dirName -> viewModel.createNewDirectory(dirName, context) }, // Pass context directly
+                            onFileClick = { fileName, filePath -> viewModel.openFile(fileName, filePath, context) },
+                            onCreateFile = { fileName -> viewModel.createNewFile(fileName, context) },
+                            onCreateDirectory = { dirName -> viewModel.createNewDirectory(dirName, context) },
                             onOpenDirectory = { 
                                 // Launch the system directory picker
                                 directoryPickerLauncher.launch(null)

@@ -152,14 +152,7 @@ fun CodeEditor(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             )
             {
-                IconButton(onClick = onNewFile) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "New File",
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+
 
                 IconButton(onClick = onSaveFile) {
                     Icon(
@@ -248,12 +241,12 @@ fun CodeEditor(
                 )
 
                 // Find and Replace
-                IconButton(onClick = onShowFindReplace) {
+                IconButton(onClick = onShowFindReplace,) {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Find and Replace",
                         tint = Color.White,
-                        modifier = Modifier.size(16.dp)
+
                     )
                 }
 

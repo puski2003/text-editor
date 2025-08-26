@@ -2,6 +2,7 @@ package com.example.texteditor.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -147,30 +148,35 @@ fun FindReplaceDialog(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     // Buttons
-                    Row(
+                    Column (
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+
                     ) {
                         Button(
                             onClick = onFindNext,
-                            modifier = Modifier.weight(1f)
+
                         ) {
                             Text("Find Next")
                         }
                         
-                        Button(
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceAround,
+                            modifier = Modifier.fillMaxWidth()
+
+                        ) { Button(
                             onClick = onReplaceNext,
-                            modifier = Modifier.weight(1f)
-                        ) {
+
+
+                            ) {
                             Text("Replace")
                         }
-                        
-                        Button(
-                            onClick = onReplaceAll,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Replace All")
-                        }
+
+                            Button(
+                                onClick = onReplaceAll,
+
+                                ) {
+                                Text("Replace All")
+                            } }
                     }
                 }
             }

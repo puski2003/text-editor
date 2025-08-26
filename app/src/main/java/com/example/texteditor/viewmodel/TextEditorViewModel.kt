@@ -126,7 +126,7 @@ class TextEditorViewModel : ViewModel() {
                 _currentWorkspaceUri.value = uriString
                 _currentWorkspaceDir.value = documentFile.name ?: "Selected Directory"
                 loadDirectoryFromUri(context, documentFile)
-                _statusMessage.value = "Opened directory: ${documentFile.name}"
+
             } else {
                 _statusMessage.value = "Invalid directory selected"
             }
@@ -180,7 +180,7 @@ class TextEditorViewModel : ViewModel() {
                 _currentWorkspaceDir.value = directoryPath
                 _currentWorkspaceUri.value = null // Clear URI when using file path
                 loadDirectoryFiles(directory)
-                _statusMessage.value = "Opened directory: ${directory.name}"
+
             } else {
                 _statusMessage.value = "Invalid directory path"
             }
@@ -249,7 +249,7 @@ class TextEditorViewModel : ViewModel() {
                         if (newFile != null) {
                             refreshFileExplorerFromUri(context)
                             openFileFromUri(context, newFile.uri.toString())
-                            _statusMessage.value = "Created file: $fileName"
+
                         } else {
                             _statusMessage.value = "Failed to create file: $fileName"
                         }
@@ -261,7 +261,7 @@ class TextEditorViewModel : ViewModel() {
                         newFile.createNewFile()
                         refreshFileExplorer()
                         openFileFromPath(newFile.absolutePath)
-                        _statusMessage.value = "Created file: $fileName"
+
                     } else {
                         _statusMessage.value = "File already exists: $fileName"
                     }
@@ -299,7 +299,7 @@ class TextEditorViewModel : ViewModel() {
                 if (!newDir.exists()) {
                     newDir.mkdirs()
                     refreshFileExplorer()
-                    _statusMessage.value = "Created directory: $dirName"
+
                 } else {
                     _statusMessage.value = "Directory already exists: $dirName"
                 }
@@ -350,7 +350,7 @@ class TextEditorViewModel : ViewModel() {
                 undoStack.clear()
                 redoStack.clear()
                 updateStatistics(content)
-                _statusMessage.value = "Opened file: ${documentFile.name}"
+
             } else {
                 _statusMessage.value = "File not found or inaccessible"
             }
@@ -372,7 +372,7 @@ class TextEditorViewModel : ViewModel() {
                 undoStack.clear()
                 redoStack.clear()
                 updateStatistics(content)
-                _statusMessage.value = "Opened file: ${file.name}"
+
             } else {
                 _statusMessage.value = "File not found: $filePath"
             }
