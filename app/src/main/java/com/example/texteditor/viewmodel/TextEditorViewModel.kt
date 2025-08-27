@@ -98,6 +98,13 @@ class TextEditorViewModel : ViewModel() {
     private val _compileOutput = MutableStateFlow<String?>(null)
     val compileOutput: StateFlow<String?> = _compileOutput.asStateFlow()
     
+    // Add these properties near the existing compile-related properties
+    private val _isTerminalVisible = MutableStateFlow(false)
+    val isTerminalVisible: StateFlow<Boolean> = _isTerminalVisible.asStateFlow()
+
+    private val _terminalOutput = MutableStateFlow<String?>(null)
+    val terminalOutput: StateFlow<String?> = _terminalOutput.asStateFlow()
+    
     init {
         // Initialize with default workspace
         initializeDefaultWorkspace()
@@ -734,6 +741,7 @@ class TextEditorViewModel : ViewModel() {
         
         viewModelScope.launch {
             _isCompiling.value = true
+            _isTerminalVisible.value = true // Show terminal when compilation starts
             _statusMessage.value = "Compiling..."
             
             try {
@@ -743,16 +751,16 @@ class TextEditorViewModel : ViewModel() {
                 )
                 
                 _compileErrors.value = response.errors
-                _compileOutput.value = response.output
+                _terminalOutput.value = response.output // Set terminal output
                 
                 if (response.success) {
-                    _statusMessage.value = "Compilation successful"
+                    _statusMessage.value = "Compilation and execution completed"
                 } else {
-                     println()
                     _statusMessage.value = "Compilation failed: ${response.errors.size} errors"
                 }
             } catch (e: Exception) {
                 _statusMessage.value = "Compilation error: ${e.message}"
+                _terminalOutput.value = "Error: ${e.message}"
                 _compileErrors.value = emptyList()
             } finally {
                 _isCompiling.value = false
@@ -812,5 +820,17 @@ class TextEditorViewModel : ViewModel() {
         } else {
             ""
         }
+    }
+
+    fun showTerminal() {
+        _isTerminalVisible.value = true
+    }
+
+    fun hideTerminal() {
+        _isTerminalVisible.value = false
+    }
+
+    fun clearTerminalOutput() {
+        _terminalOutput.value = null
     }
 }

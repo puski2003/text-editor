@@ -26,6 +26,7 @@ import com.example.texteditor.ui.components.FileExplorer
 import com.example.texteditor.ui.components.FindReplaceDialog
 import com.example.texteditor.ui.components.SaveAsDialog
 import com.example.texteditor.ui.components.StatusBar
+import com.example.texteditor.ui.components.TerminalOutputPanel
 import com.example.texteditor.viewmodel.TextEditorViewModel
 import kotlinx.coroutines.launch
 import android.content.Intent
@@ -58,6 +59,8 @@ fun TextEditorScreen(
     val compileErrors by viewModel.compileErrors.collectAsState()
     val isCompiling by viewModel.isCompiling.collectAsState()
     val compileOutput by viewModel.compileOutput.collectAsState()
+    val isTerminalVisible by viewModel.isTerminalVisible.collectAsState()
+    val terminalOutput by viewModel.terminalOutput.collectAsState()
     // Save As dialog state
     var showSaveAsDialog by remember { mutableStateOf(false) }
     
@@ -171,19 +174,31 @@ fun TextEditorScreen(
                 )
             }
             
-            // Status Bar
-            StatusBar(
-                wordCount = wordCount,
-                charCount = charCount,
-                currentFile = currentFile,
-                isDirty = isDirty
-            )
-            
-            // Show compile errors if any
-            if (compileErrors.isNotEmpty()) {
-                CompileErrorPanel(
-                    errors = compileErrors,
-                    onDismiss = { viewModel.clearCompileErrors() }
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // Show terminal output panel at the bottom
+                if (isTerminalVisible) {
+                    TerminalOutputPanel(
+                        output = terminalOutput,
+                        isCompiling = isCompiling,
+                        onDismiss = { viewModel.hideTerminal() },
+                        onClearOutput = { viewModel.clearTerminalOutput() }
+                    )
+                }
+                
+                // Show compile errors if any (above terminal)
+                if (compileErrors.isNotEmpty()) {
+                    CompileErrorPanel(
+                        errors = compileErrors,
+                        onDismiss = { viewModel.clearCompileErrors() }
+                    )
+                }
+                
+                // Status Bar
+                StatusBar(
+                    wordCount = wordCount,
+                    charCount = charCount,
+                    currentFile = currentFile,
+                    isDirty = isDirty
                 )
             }
         }
