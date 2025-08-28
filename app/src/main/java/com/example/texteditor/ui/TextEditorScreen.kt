@@ -138,6 +138,7 @@ fun TextEditorScreen(
                             onFileClick = { fileName, filePath -> viewModel.openFile(fileName, filePath, context) },
                             onCreateFile = { fileName, parentPath -> viewModel.createNewFile(fileName, context, parentPath) },
                             onCreateDirectory = { dirName, parentPath -> viewModel.createNewDirectory(dirName, context, parentPath) },
+                            onDeleteFile = { filePath -> viewModel.deleteFile(filePath, context) }, // Add this line
                             onOpenDirectory = { 
                                 // Launch the system directory picker
                                 directoryPickerLauncher.launch(null)

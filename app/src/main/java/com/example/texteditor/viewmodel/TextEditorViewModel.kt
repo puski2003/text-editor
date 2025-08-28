@@ -22,93 +22,93 @@ import kotlin.text.Regex
 import android.webkit.MimeTypeMap
 
 class TextEditorViewModel : ViewModel() {
-    
+
     private val _textFieldValue = MutableStateFlow(TextFieldValue(""))
     val textFieldValue: StateFlow<TextFieldValue> = _textFieldValue.asStateFlow()
-    
+
     private val _isDirty = MutableStateFlow(false)
     val isDirty: StateFlow<Boolean> = _isDirty.asStateFlow()
-    
+
     private val _currentFile = MutableStateFlow<String?>(null)
     val currentFile: StateFlow<String?> = _currentFile.asStateFlow()
-    
+
     private val _currentFilePath = MutableStateFlow<String?>(null)
     val currentFilePath: StateFlow<String?> = _currentFilePath.asStateFlow()
-    
+
     private val _currentFileUri = MutableStateFlow<String?>(null)
     val currentFileUri: StateFlow<String?> = _currentFileUri.asStateFlow()
-    
+
     private val _currentWorkspaceDir = MutableStateFlow<String?>(null)
     val currentWorkspaceDir: StateFlow<String?> = _currentWorkspaceDir.asStateFlow()
-    
+
     private val _currentWorkspaceUri = MutableStateFlow<String?>(null)
     val currentWorkspaceUri: StateFlow<String?> = _currentWorkspaceUri.asStateFlow()
-    
+
     private val _files = MutableStateFlow<List<FileItem>>(emptyList())
     val files: StateFlow<List<FileItem>> = _files.asStateFlow()
-    
+
     private val _isFileExplorerVisible = MutableStateFlow(true)
     val isFileExplorerVisible: StateFlow<Boolean> = _isFileExplorerVisible.asStateFlow()
-    
+
     // Auto-save state
     private val _isAutoSaveEnabled = MutableStateFlow(true)
     val isAutoSaveEnabled: StateFlow<Boolean> = _isAutoSaveEnabled.asStateFlow()
-    
+
     // Undo/Redo functionality
     private val undoStack = mutableListOf<TextFieldValue>()
     private val redoStack = mutableListOf<TextFieldValue>()
     private var maxUndoHistory = 50
-    
+
     // Find and Replace state
     private val _findText = MutableStateFlow("")
     val findText: StateFlow<String> = _findText.asStateFlow()
-    
+
     private val _replaceText = MutableStateFlow("")
     val replaceText: StateFlow<String> = _replaceText.asStateFlow()
-    
+
     private val _isFindReplaceVisible = MutableStateFlow(false)
     val isFindReplaceVisible: StateFlow<Boolean> = _isFindReplaceVisible.asStateFlow()
-    
+
     private val _matchCase = MutableStateFlow(false)
     val matchCase: StateFlow<Boolean> = _matchCase.asStateFlow()
-    
+
     private val _matchWholeWord = MutableStateFlow(false)
     val matchWholeWord: StateFlow<Boolean> = _matchWholeWord.asStateFlow()
-    
+
     // Statistics
     private val _wordCount = MutableStateFlow(0)
     val wordCount: StateFlow<Int> = _wordCount.asStateFlow()
-    
+
     private val _charCount = MutableStateFlow(0)
     val charCount: StateFlow<Int> = _charCount.asStateFlow()
-    
+
     // Error/status messages
     private val _statusMessage = MutableStateFlow<String?>(null)
     val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
-    
+
     // Add these new properties
     private val compilerService = CompilerService()
-    
+
     private val _compileErrors = MutableStateFlow<List<CompilerError>>(emptyList())
     val compileErrors: StateFlow<List<CompilerError>> = _compileErrors.asStateFlow()
-    
+
     private val _isCompiling = MutableStateFlow(false)
     val isCompiling: StateFlow<Boolean> = _isCompiling.asStateFlow()
-    
+
     private val _compileOutput = MutableStateFlow<String?>(null)
     val compileOutput: StateFlow<String?> = _compileOutput.asStateFlow()
-    
+
     // Change terminal visibility back to false initially
     private val _isTerminalVisible = MutableStateFlow(false)  // Changed back to false
     val isTerminalVisible: StateFlow<Boolean> = _isTerminalVisible.asStateFlow()
 
     private val _terminalOutput = MutableStateFlow<String?>(null)
     val terminalOutput: StateFlow<String?> = _terminalOutput.asStateFlow()
-    
+
     init {
         // Initialize with default workspace
         initializeDefaultWorkspace()
-        
+
         // Auto-save functionality
         viewModelScope.launch {
             while (true) {
@@ -119,16 +119,19 @@ class TextEditorViewModel : ViewModel() {
             }
         }
     }
-    
+
     private fun initializeDefaultWorkspace() {
         try {
             // Try to use Documents directory, fallback to app-specific directory
-            val documentsDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "TextEditor")
-            
+            val documentsDir = File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
+                "TextEditor"
+            )
+
             if (!documentsDir.exists()) {
                 documentsDir.mkdirs()
             }
-            
+
             if (documentsDir.exists() && documentsDir.canWrite()) {
                 openDirectory(documentsDir.absolutePath)
             } else {
@@ -138,12 +141,12 @@ class TextEditorViewModel : ViewModel() {
             _statusMessage.value = "Error initializing workspace: ${e.message}"
         }
     }
-    
+
     fun openDirectoryFromUri(context: Context, uriString: String) {
         try {
             val uri = Uri.parse(uriString)
             val documentFile = DocumentFile.fromTreeUri(context, uri)
-            
+
             if (documentFile != null && documentFile.isDirectory) {
                 _currentWorkspaceUri.value = uriString
                 _currentWorkspaceDir.value = documentFile.name ?: "Selected Directory"
@@ -156,12 +159,14 @@ class TextEditorViewModel : ViewModel() {
             _statusMessage.value = "Error opening directory: ${e.message}"
         }
     }
-    
+
     private fun loadDirectoryFromUri(context: Context, documentFile: DocumentFile) {
         try {
             val fileItems = mutableListOf<FileItem>()
-            
-            documentFile.listFiles().sortedWith(compareBy<DocumentFile> { !it.isDirectory }.thenBy { it.name?.lowercase() ?: "" }).forEach { file ->
+
+            documentFile.listFiles().sortedWith(compareBy<DocumentFile> { !it.isDirectory }.thenBy {
+                it.name?.lowercase() ?: ""
+            }).forEach { file ->
                 val fileName = file.name ?: "Unknown"
                 if (file.isDirectory) {
                     val children = loadDirectoryChildrenFromUri(file)
@@ -170,17 +175,19 @@ class TextEditorViewModel : ViewModel() {
                     fileItems.add(FileItem(fileName, file.uri.toString(), false))
                 }
             }
-            
+
             _files.value = fileItems
         } catch (e: Exception) {
             _statusMessage.value = "Error loading directory files: ${e.message}"
         }
     }
-    
+
     private fun loadDirectoryChildrenFromUri(documentFile: DocumentFile): List<FileItem> {
         return try {
             val children = mutableListOf<FileItem>()
-            documentFile.listFiles().sortedWith(compareBy<DocumentFile> { !it.isDirectory }.thenBy { it.name?.lowercase() ?: "" }).forEach { file ->
+            documentFile.listFiles().sortedWith(compareBy<DocumentFile> { !it.isDirectory }.thenBy {
+                it.name?.lowercase() ?: ""
+            }).forEach { file ->
                 val fileName = file.name ?: "Unknown"
                 if (file.isDirectory) {
                     val subChildren = loadDirectoryChildrenFromUri(file)
@@ -194,7 +201,7 @@ class TextEditorViewModel : ViewModel() {
             emptyList()
         }
     }
-    
+
     fun openDirectory(directoryPath: String) {
         try {
             val directory = File(directoryPath)
@@ -210,49 +217,53 @@ class TextEditorViewModel : ViewModel() {
             _statusMessage.value = "Error opening directory: ${e.message}"
         }
     }
-    
+
     private fun loadDirectoryFiles(directory: File) {
         try {
             val fileItems = mutableListOf<FileItem>()
-            
-            directory.listFiles()?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name.lowercase() })?.forEach { file ->
-                if (file.isDirectory) {
-                    val children = loadDirectoryChildren(file)
-                    fileItems.add(FileItem(file.name, file.absolutePath, true, children))
-                } else {
-                    fileItems.add(FileItem(file.name, file.absolutePath, false))
+
+            directory.listFiles()
+                ?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name.lowercase() })
+                ?.forEach { file ->
+                    if (file.isDirectory) {
+                        val children = loadDirectoryChildren(file)
+                        fileItems.add(FileItem(file.name, file.absolutePath, true, children))
+                    } else {
+                        fileItems.add(FileItem(file.name, file.absolutePath, false))
+                    }
                 }
-            }
-            
+
             _files.value = fileItems
         } catch (e: Exception) {
             _statusMessage.value = "Error loading directory files: ${e.message}"
         }
     }
-    
+
     private fun loadDirectoryChildren(directory: File): List<FileItem> {
         return try {
             val children = mutableListOf<FileItem>()
-            directory.listFiles()?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name.lowercase() })?.forEach { file ->
-                if (file.isDirectory) {
-                    val subChildren = loadDirectoryChildren(file)
-                    children.add(FileItem(file.name, file.absolutePath, true, subChildren))
-                } else {
-                    children.add(FileItem(file.name, file.absolutePath, false))
+            directory.listFiles()
+                ?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name.lowercase() })
+                ?.forEach { file ->
+                    if (file.isDirectory) {
+                        val subChildren = loadDirectoryChildren(file)
+                        children.add(FileItem(file.name, file.absolutePath, true, subChildren))
+                    } else {
+                        children.add(FileItem(file.name, file.absolutePath, false))
+                    }
                 }
-            }
             children
         } catch (e: Exception) {
             emptyList()
         }
     }
-    
+
     fun refreshFileExplorer() {
         _currentWorkspaceDir.value?.let { workspaceDir ->
             loadDirectoryFiles(File(workspaceDir))
         }
     }
-    
+
     fun createNewFile(fileName: String, context: Context? = null, parentPath: String? = null) {
         viewModelScope.launch {
             try {
@@ -288,7 +299,7 @@ class TextEditorViewModel : ViewModel() {
                     } else {
                         File(workspaceDir)
                     }
-                    
+
                     val newFile = File(targetDir, fileName)
                     if (!newFile.exists()) {
                         newFile.createNewFile()
@@ -339,7 +350,7 @@ class TextEditorViewModel : ViewModel() {
                 } else {
                     File(workspaceDir)
                 }
-                
+
                 val newDir = File(targetDir, dirName)
                 if (!newDir.exists()) {
                     newDir.mkdirs()
@@ -539,7 +550,12 @@ class TextEditorViewModel : ViewModel() {
         if (!selection.collapsed) {
             copy(context)
             val newText = _textFieldValue.value.text.removeRange(selection.start, selection.end)
-            updateText(_textFieldValue.value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(selection.start)))
+            updateText(
+                _textFieldValue.value.copy(
+                    text = newText,
+                    selection = androidx.compose.ui.text.TextRange(selection.start)
+                )
+            )
             _statusMessage.value = "Text cut to clipboard"
         }
     }
@@ -550,12 +566,15 @@ class TextEditorViewModel : ViewModel() {
         if (clipData != null && clipData.itemCount > 0) {
             val pastedText = clipData.getItemAt(0).text.toString()
             val selection = _textFieldValue.value.selection
-            val newText = _textFieldValue.value.text.replaceRange(selection.start, selection.end, pastedText)
+            val newText =
+                _textFieldValue.value.text.replaceRange(selection.start, selection.end, pastedText)
             val newCursorPosition = selection.start + pastedText.length
-            updateText(_textFieldValue.value.copy(
-                text = newText,
-                selection = androidx.compose.ui.text.TextRange(newCursorPosition)
-            ))
+            updateText(
+                _textFieldValue.value.copy(
+                    text = newText,
+                    selection = androidx.compose.ui.text.TextRange(newCursorPosition)
+                )
+            )
             _statusMessage.value = "Text pasted from clipboard"
         }
     }
@@ -622,7 +641,8 @@ class TextEditorViewModel : ViewModel() {
             val match = regex.find(text, currentPosition) ?: regex.find(text, 0)
 
             match?.let {
-                val newSelection = androidx.compose.ui.text.TextRange(it.range.first, it.range.last + 1)
+                val newSelection =
+                    androidx.compose.ui.text.TextRange(it.range.first, it.range.last + 1)
                 _textFieldValue.value = _textFieldValue.value.copy(selection = newSelection)
             }
         }
@@ -635,7 +655,8 @@ class TextEditorViewModel : ViewModel() {
         if (searchText.isNotEmpty()) {
             val selection = _textFieldValue.value.selection
             if (!selection.collapsed) {
-                val selectedText = _textFieldValue.value.text.substring(selection.start, selection.end)
+                val selectedText =
+                    _textFieldValue.value.text.substring(selection.start, selection.end)
 
                 val matches = if (_matchWholeWord.value) {
                     val regex = if (_matchCase.value) {
@@ -653,12 +674,18 @@ class TextEditorViewModel : ViewModel() {
                 }
 
                 if (matches) {
-                    val newText = _textFieldValue.value.text.replaceRange(selection.start, selection.end, replaceText)
+                    val newText = _textFieldValue.value.text.replaceRange(
+                        selection.start,
+                        selection.end,
+                        replaceText
+                    )
                     val newCursorPosition = selection.start + replaceText.length
-                    updateText(_textFieldValue.value.copy(
-                        text = newText,
-                        selection = androidx.compose.ui.text.TextRange(newCursorPosition)
-                    ))
+                    updateText(
+                        _textFieldValue.value.copy(
+                            text = newText,
+                            selection = androidx.compose.ui.text.TextRange(newCursorPosition)
+                        )
+                    )
                 }
             }
             findNext()
@@ -759,24 +786,24 @@ class TextEditorViewModel : ViewModel() {
     fun compileCurrentFile() {
         val currentFileName = _currentFile.value
         val language = getLanguageFromFile(currentFileName)
-        
+
         viewModelScope.launch {
             // Clear terminal and show compiling status immediately
             _terminalOutput.value = null
             _isCompiling.value = true
             _isTerminalVisible.value = true // Show terminal when compilation starts
             _statusMessage.value = "Compiling $language code..."
-            
+
             // Add a small delay to show the "Compiling..." message
             delay(100)
-            
+
             try {
                 val response = compilerService.compileCode(
                     code = _textFieldValue.value.text,
                     fileName = currentFileName ?: "temp.${getDefaultExtension(language)}",
                     language = language
                 )
-                
+
                 // Convert List<String> to List<CompilerError> for internal use
                 val compilerErrors = response.errors.map { errorMessage ->
                     CompilerError(
@@ -787,7 +814,7 @@ class TextEditorViewModel : ViewModel() {
                     )
                 }
                 _compileErrors.value = compilerErrors
-                
+
                 // Create terminal output that includes errors
                 val terminalOutput = if (response.success) {
                     if (response.errors.isNotEmpty()) {
@@ -805,9 +832,9 @@ class TextEditorViewModel : ViewModel() {
                     }
                     "${response.output}$errorSection"
                 }
-                
+
                 _terminalOutput.value = terminalOutput
-                
+
                 if (response.success) {
                     _statusMessage.value = if (response.errors.isNotEmpty()) {
                         "$language compilation completed with ${response.errors.size} warnings"
@@ -815,7 +842,8 @@ class TextEditorViewModel : ViewModel() {
                         "$language compilation and execution completed successfully"
                     }
                 } else {
-                    _statusMessage.value = "$language compilation failed: ${response.errors.size} errors"
+                    _statusMessage.value =
+                        "$language compilation failed: ${response.errors.size} errors"
                 }
             } catch (e: Exception) {
                 _statusMessage.value = "Compilation error: ${e.message}"
@@ -829,7 +857,7 @@ class TextEditorViewModel : ViewModel() {
 
     private fun getLanguageFromFile(fileName: String?): String {
         if (fileName == null) return "python" // Default to Python
-        
+
         return when (fileName.substringAfterLast('.', "").lowercase()) {
             "kt" -> "kotlin"
             "py" -> "python"
@@ -863,14 +891,92 @@ class TextEditorViewModel : ViewModel() {
         _isTerminalVisible.value = false
     }
 
-    
+
     // Keep this function for clearing output
     fun clearTerminalOutput() {
         _terminalOutput.value = null
     }
-    
+
     private fun getMimeTypeFromFileName(fileName: String): String {
         val extension = fileName.substringAfterLast('.', "").lowercase()
         return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: "text/plain"
     }
+
+// Replace the deleteFile function (around lines 860-920) with this corrected version:
+
+    fun deleteFile(filePath: String, context: Context? = null) {
+        viewModelScope.launch {
+            try {
+                if (filePath.startsWith("content://")) {
+                    // Handle URI-based files (DocumentFile API)
+                    if (context != null) {
+                        val uri = Uri.parse(filePath)
+                        val documentFile = DocumentFile.fromSingleUri(context, uri)
+                        if (documentFile != null && documentFile.exists()) {
+                            val fileName = documentFile.name ?: "Unknown"
+                            val isDirectory = documentFile.isDirectory
+
+                            val deleted = documentFile.delete()
+                            if (deleted) {
+                                // If the deleted file is currently open, close it
+                                if (_currentFileUri.value == filePath) {
+                                    newFile() // Clear the editor
+                                }
+                                refreshFileExplorerFromUri(context)
+                                _statusMessage.value = "Deleted ${if (isDirectory) "directory" else "file"}: $fileName"
+                            } else {
+                                _statusMessage.value = "Failed to delete: $fileName (may be protected or in use)"
+                            }
+                        } else {
+                            _statusMessage.value = "File not found or inaccessible"
+                        }
+                    } else {
+                        _statusMessage.value = "Context required for URI-based file deletion"
+                    }
+                } else {
+                    // Handle regular file paths
+                    val file = File(filePath)
+                    if (file.exists()) {
+                        val fileName = file.name
+                        val isDirectory = file.isDirectory
+
+                        // Check if file is currently open
+                        val isCurrentlyOpen = _currentFilePath.value == filePath
+
+                        val deleted = if (isDirectory) {
+                            // Count items in directory before deletion
+                            val itemCount = file.listFiles()?.size ?: 0
+                            if (itemCount > 0) {
+                                // Directory is not empty, ask for confirmation (this would need UI state)
+                                _statusMessage.value = "Directory contains $itemCount items. Delete anyway..."
+                                delay(1000) // Give user time to see the message
+                            }
+                            file.deleteRecursively()
+                        } else {
+                            file.delete()
+                        }
+
+                        if (deleted) {
+                            // If the deleted file is currently open, close it
+                            if (isCurrentlyOpen) {
+                                newFile() // Clear the editor
+                            }
+                            refreshFileExplorer()
+                            _statusMessage.value = "Successfully deleted ${if (isDirectory) "directory" else "file"}: $fileName"
+                        } else {
+                            _statusMessage.value = "Failed to delete: $fileName (may be protected, in use, or permission denied)"
+                        }
+                    } else {
+                        _statusMessage.value = "File not found: ${File(filePath).name}"
+                    }
+                }
+            } catch ( e: SecurityException) {
+                _statusMessage.value = "Permission denied: Cannot delete file"
+            } catch ( e: Exception) {
+                _statusMessage.value = "Error deleting file: ${e.message}"
+            }
+        }
+    }
+
+    // Add this function to your TextEditorViewModel class
 }

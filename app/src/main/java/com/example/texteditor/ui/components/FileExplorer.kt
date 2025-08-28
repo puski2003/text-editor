@@ -32,8 +32,9 @@ import com.example.texteditor.model.FileItem
 fun FileExplorer(
     files: List<FileItem>,
     onFileClick: (String, String) -> Unit,
-    onCreateFile: (String, String?) -> Unit, // Add parentPath parameter
-    onCreateDirectory: (String, String?) -> Unit, // Add parentPath parameter
+    onCreateFile: (String, String?) -> Unit,
+    onCreateDirectory: (String, String?) -> Unit,
+    onDeleteFile: (String) -> Unit, // Add delete callback
     onOpenDirectory: () -> Unit,
     currentWorkspaceDir: String?,
     modifier: Modifier = Modifier
@@ -278,7 +279,8 @@ fun FileExplorer(
             confirmButton = {
                 TextButton(
                     onClick = {
-
+                        // Actually delete the file
+                        onDeleteFile(itemToDelete!!.path)
                         selectedItems = selectedItems - itemToDelete!!.path
                         showDeleteDialog = false
                         itemToDelete = null
