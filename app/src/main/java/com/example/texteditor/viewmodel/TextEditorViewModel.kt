@@ -16,10 +16,9 @@ import android.content.Context
 import android.os.Environment
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
-import kotlin.text.Regex
-import com.example.texteditor.compiler.CompilerService
-import com.example.texteditor.compiler.CompileResponse
 import com.example.texteditor.compiler.CompilerError
+import com.example.texteditor.compiler.CompilerService
+import kotlin.text.Regex
 
 class TextEditorViewModel : ViewModel() {
     
@@ -750,17 +749,49 @@ class TextEditorViewModel : ViewModel() {
                     fileName = _currentFile.value ?: "temp.kt"
                 )
                 
-                _compileErrors.value = response.errors
-                _terminalOutput.value = response.output // Set terminal output
+                // Convert List<String> to List<CompilerError> for internal use
+                val compilerErrors = response.errors.map { errorMessage ->
+                    CompilerError(
+                        message = errorMessage,
+                        line = null,
+                        column = null,
+                        severity = "ERROR"
+                    )
+                }
+                _compileErrors.value = compilerErrors
+                
+                // Create terminal output that includes errors
+                val terminalOutput = if (response.success) {
+                    if (response.errors.isNotEmpty()) {
+                        // Success but with warnings
+                        "${response.output}\n\n--- Warnings ---\n${response.errors.joinToString("\n")}"
+                    } else {
+                        response.output
+                    }
+                } else {
+                    // Compilation failed
+                    val errorSection = if (response.errors.isNotEmpty()) {
+                        "\n--- Compilation Errors ---\n${response.errors.joinToString("\n")}"
+                    } else {
+                        ""
+                    }
+                    "${response.output}$errorSection"
+                }
+                
+                _terminalOutput.value = terminalOutput
                 
                 if (response.success) {
-                    _statusMessage.value = "Compilation and execution completed"
+                    _statusMessage.value = if (response.errors.isNotEmpty()) {
+                        "Compilation completed with ${response.errors.size} warnings"
+                    } else {
+                        "Compilation and execution completed"
+                    }
                 } else {
                     _statusMessage.value = "Compilation failed: ${response.errors.size} errors"
                 }
             } catch (e: Exception) {
                 _statusMessage.value = "Compilation error: ${e.message}"
-                _terminalOutput.value = "Error: ${e.message}"
+                _terminalOutput.value = "--- Compilation Error ---\nError: ${e.message}"
                 _compileErrors.value = emptyList()
             } finally {
                 _isCompiling.value = false

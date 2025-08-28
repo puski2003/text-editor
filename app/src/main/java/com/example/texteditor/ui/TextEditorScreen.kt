@@ -21,7 +21,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.texteditor.ui.components.CodeEditor
-import com.example.texteditor.ui.components.CompileErrorPanel  // Add this import
 import com.example.texteditor.ui.components.FileExplorer
 import com.example.texteditor.ui.components.FindReplaceDialog
 import com.example.texteditor.ui.components.SaveAsDialog
@@ -184,15 +183,7 @@ fun TextEditorScreen(
                         onClearOutput = { viewModel.clearTerminalOutput() }
                     )
                 }
-                
-                // Show compile errors if any (above terminal)
-                if (compileErrors.isNotEmpty()) {
-                    CompileErrorPanel(
-                        errors = compileErrors,
-                        onDismiss = { viewModel.clearCompileErrors() }
-                    )
-                }
-                
+
                 // Status Bar
                 StatusBar(
                     wordCount = wordCount,

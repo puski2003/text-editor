@@ -162,8 +162,12 @@ class SyntaxHighlighter(private val configuration: SyntaxConfiguration) {
             val lines = originalText.lines()
             
             errors.forEach { error ->
-                if (error.line > 0 && error.line <= lines.size) {
-                    val lineIndex = error.line - 1
+                // Handle nullable line and column
+                val errorLine = error.line
+                val errorColumn = error.column
+                
+                if (errorLine != null && errorLine > 0 && errorLine <= lines.size) {
+                    val lineIndex = errorLine - 1
                     var lineStartIndex = 0
                     
                     // Calculate the start index of the error line
@@ -172,14 +176,16 @@ class SyntaxHighlighter(private val configuration: SyntaxConfiguration) {
                     }
                     
                     val lineLength = lines[lineIndex].length
-                    val errorStart = lineStartIndex + (error.column - 1).coerceIn(0, lineLength)
+                    val columnOffset = (errorColumn ?: 1) - 1 // Use 1 as default if column is null
+                    val errorStart = lineStartIndex + columnOffset.coerceIn(0, lineLength)
                     val errorEnd = (errorStart + 1).coerceAtMost(lineStartIndex + lineLength)
                     
                     if (errorStart < originalText.length) {
                         val errorColor = when (error.severity) {
-                            ErrorSeverity.ERROR -> Color.Red
-                            ErrorSeverity.WARNING -> Color(0xFFFF9800) // Orange
-                            ErrorSeverity.INFO -> Color(0xFF2196F3) // Blue
+                            "ERROR" -> Color.Red
+                            "WARNING" -> Color(0xFFFF9800) // Orange
+                            "INFO" -> Color(0xFF2196F3) // Blue
+                            else -> Color.Red // Default to red for unknown severity
                         }
                         
                         addStyle(

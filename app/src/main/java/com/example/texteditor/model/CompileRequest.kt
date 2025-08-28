@@ -10,14 +10,14 @@ data class CompileRequest(
 data class CompileResponse(
     val success: Boolean,
     val output: String,
-    val errors: List<CompilerError>
+    val errors: List<String>
 )
 
 data class CompilerError(
-    val line: Int,
-    val column: Int,
     val message: String,
-    val severity: ErrorSeverity
+    val line: Int? = null,        // Make nullable with default null
+    val column: Int? = null,      // Make nullable with default null
+    val severity: String = "ERROR"
 )
 
 enum class ErrorSeverity {
