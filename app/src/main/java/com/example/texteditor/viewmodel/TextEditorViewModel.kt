@@ -19,6 +19,7 @@ import androidx.documentfile.provider.DocumentFile
 import com.example.texteditor.compiler.CompilerError
 import com.example.texteditor.compiler.CompilerService
 import kotlin.text.Regex
+import android.webkit.MimeTypeMap
 
 class TextEditorViewModel : ViewModel() {
     
@@ -97,8 +98,8 @@ class TextEditorViewModel : ViewModel() {
     private val _compileOutput = MutableStateFlow<String?>(null)
     val compileOutput: StateFlow<String?> = _compileOutput.asStateFlow()
     
-    // Add these properties near the existing compile-related properties
-    private val _isTerminalVisible = MutableStateFlow(false)
+    // Change terminal visibility back to false initially
+    private val _isTerminalVisible = MutableStateFlow(false)  // Changed back to false
     val isTerminalVisible: StateFlow<Boolean> = _isTerminalVisible.asStateFlow()
 
     private val _terminalOutput = MutableStateFlow<String?>(null)
@@ -731,22 +732,26 @@ class TextEditorViewModel : ViewModel() {
         }
     }
 
-    // Add this method
+    // Update the compileCurrentFile function
     fun compileCurrentFile() {
-        if (_currentFilePath.value?.endsWith(".kt") != true) {
-            _statusMessage.value = "Only Kotlin files can be compiled"
-            return
-        }
+        val currentFileName = _currentFile.value
+        val language = getLanguageFromFile(currentFileName)
         
         viewModelScope.launch {
+            // Clear terminal and show compiling status immediately
+            _terminalOutput.value = null
             _isCompiling.value = true
             _isTerminalVisible.value = true // Show terminal when compilation starts
-            _statusMessage.value = "Compiling..."
+            _statusMessage.value = "Compiling $language code..."
+            
+            // Add a small delay to show the "Compiling..." message
+            delay(100)
             
             try {
                 val response = compilerService.compileCode(
                     code = _textFieldValue.value.text,
-                    fileName = _currentFile.value ?: "temp.kt"
+                    fileName = currentFileName ?: "temp.${getDefaultExtension(language)}",
+                    language = language
                 )
                 
                 // Convert List<String> to List<CompilerError> for internal use
@@ -782,12 +787,12 @@ class TextEditorViewModel : ViewModel() {
                 
                 if (response.success) {
                     _statusMessage.value = if (response.errors.isNotEmpty()) {
-                        "Compilation completed with ${response.errors.size} warnings"
+                        "$language compilation completed with ${response.errors.size} warnings"
                     } else {
-                        "Compilation and execution completed"
+                        "$language compilation and execution completed successfully"
                     }
                 } else {
-                    _statusMessage.value = "Compilation failed: ${response.errors.size} errors"
+                    _statusMessage.value = "$language compilation failed: ${response.errors.size} errors"
                 }
             } catch (e: Exception) {
                 _statusMessage.value = "Compilation error: ${e.message}"
@@ -798,58 +803,32 @@ class TextEditorViewModel : ViewModel() {
             }
         }
     }
-    
-    fun clearCompileErrors() {
-        _compileErrors.value = emptyList()
-        _compileOutput.value = null
-    }
-    
-    fun setCompilerServerUrl(url: String) {
-        compilerService.setServerUrl(url)
-    }
-    
-    fun testCompilerConnection() {
-        viewModelScope.launch {
-            val isConnected = compilerService.testConnection()
-            _statusMessage.value = if (isConnected) {
-                "Compiler server connected"
-            } else {
-                "Cannot connect to compiler server"
-            }
+
+    private fun getLanguageFromFile(fileName: String?): String {
+        if (fileName == null) return "python" // Default to Python
+        
+        return when (fileName.substringAfterLast('.', "").lowercase()) {
+            "kt" -> "kotlin"
+            "py" -> "python"
+            "java" -> "java"
+            "c" -> "c"
+            "cpp", "cc", "cxx" -> "cpp"
+            "js" -> "javascript"
+            "go" -> "go"
+            else -> "python" // Default fallback
         }
     }
 
-    // Add this helper function to get the correct MIME type
-    private fun getMimeTypeFromFileName(fileName: String): String {
-        val extension = getFileExtension(fileName).lowercase()
-        return when (extension) {
-            ".txt" -> "text/plain"
-            ".kt", ".kts" -> "*/*"  // Use generic type to avoid .txt appending
-            ".java" -> "*/*"
-            ".py", ".pyw" -> "*/*"
-            ".js", ".jsx", ".mjs" -> "*/*"
-            ".ts", ".tsx" -> "*/*"
-            ".html", ".htm" -> "*/*"
-            ".css" -> "*/*"
-            ".xml" -> "*/*"
-            ".json" -> "*/*"
-            ".md" -> "*/*"
-            ".yml", ".yaml" -> "*/*"
-            ".sh" -> "*/*"
-            ".bat" -> "*/*"
-            ".ps1" -> "*/*"
-            // For any file that's not .txt, use generic MIME type
-            else -> "*/*"
-        }
-    }
-
-    // Add this helper function to extract file extension
-    private fun getFileExtension(fileName: String): String {
-        val lastDot = fileName.lastIndexOf('.')
-        return if (lastDot != -1 && lastDot < fileName.length - 1) {
-            fileName.substring(lastDot)
-        } else {
-            ""
+    private fun getDefaultExtension(language: String): String {
+        return when (language) {
+            "kotlin" -> "kt"
+            "python" -> "py"
+            "java" -> "java"
+            "c" -> "c"
+            "cpp" -> "cpp"
+            "javascript" -> "js"
+            "go" -> "go"
+            else -> "py"
         }
     }
 
@@ -861,7 +840,14 @@ class TextEditorViewModel : ViewModel() {
         _isTerminalVisible.value = false
     }
 
+    
+    // Keep this function for clearing output
     fun clearTerminalOutput() {
         _terminalOutput.value = null
+    }
+    
+    private fun getMimeTypeFromFileName(fileName: String): String {
+        val extension = fileName.substringAfterLast('.', "").lowercase()
+        return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: "text/plain"
     }
 }

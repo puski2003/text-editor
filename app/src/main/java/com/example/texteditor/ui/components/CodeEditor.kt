@@ -217,8 +217,11 @@ fun CodeEditor(
                             .width(1.dp),
                         color = Color.Gray
                     )
-                    // Compile button (only show for Kotlin files)
-                    if (currentFilePath?.endsWith(".kt") == true) {
+                    // Compile button (show for all supported languages)
+                    val supportedExtensions = listOf("kt", "py", "java", "c", "cpp", "cc", "cxx", "js", "go")
+                    val currentExtension = currentFilePath?.substringAfterLast('.', "")?.lowercase()
+                    
+                    if (currentExtension in supportedExtensions) {
                         IconButton(
                             onClick = onCompile,
                             enabled = !isCompiling,
@@ -233,7 +236,7 @@ fun CodeEditor(
                             } else {
                                 Icon(
                                     imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = "Compile",
+                                    contentDescription = "Compile & Run",
                                     tint = Color.White,
                                     modifier = Modifier.size(16.dp)
                                 )

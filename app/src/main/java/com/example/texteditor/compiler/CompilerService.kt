@@ -10,22 +10,29 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
+// Update data classes to match Python server
+
+
 class CompilerService {
     private val client = OkHttpClient()
     private val gson = Gson()
     private val TAG = "CompilerService"
     
-    // Default server URL - make sure this matches your server
-    private var serverUrl = "http://localhost:8080/compile" // Changed back to localhost since your logs show it's working
+    // Update to Python server port
+    private var serverUrl = "http://localhost:5000/compile"
     
     fun setServerUrl(url: String) {
         serverUrl = url
     }
     
-    suspend fun compileCode(code: String, fileName: String = "temp.kt"): CompileResponse {
+    suspend fun compileCode(
+        code: String, 
+        fileName: String = "temp.kt",
+        language: String = "kotlin"  // Add language parameter with default
+    ): CompileResponse {
         return withContext(Dispatchers.IO) {
             try {
-                val request = CompileRequest(code, fileName)
+                val request = CompileRequest(code, language, fileName)
                 val json = gson.toJson(request)
                 
                 Log.d(TAG, "Sending compile request to: $serverUrl")
@@ -42,7 +49,7 @@ class CompilerService {
                 val responseBody = response.body?.string()
                 
                 Log.d(TAG, "Response code: ${response.code}")
-                Log.d(TAG, "Compile response: $responseBody") // Better log message
+                Log.d(TAG, "Compile response: $responseBody")
                 
                 if (response.isSuccessful) {
                     if (responseBody != null) {
@@ -74,7 +81,7 @@ class CompilerService {
                 CompileResponse(
                     success = false,
                     output = "Network error: ${e.message}",
-                    errors = listOf("Cannot connect to compiler server. Make sure the server is running on port 8080.")
+                    errors = listOf("Cannot connect to compiler server. Make sure the server is running on port 5000.")
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Unexpected error", e)
@@ -104,6 +111,32 @@ class CompilerService {
             } catch (e: Exception) {
                 Log.e(TAG, "Connection test failed", e)
                 false
+            }
+        }
+    }
+    
+    suspend fun getSupportedLanguages(): List<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val languagesUrl = serverUrl.replace("/compile", "/languages")
+                val request = Request.Builder()
+                    .url(languagesUrl)
+                    .get()
+                    .build()
+                
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string()
+                
+                if (response.isSuccessful && responseBody != null) {
+                    val languagesResponse = gson.fromJson(responseBody, Map::class.java)
+                    @Suppress("UNCHECKED_CAST")
+                    (languagesResponse["languages"] as? List<String>) ?: emptyList()
+                } else {
+                    emptyList()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to get supported languages", e)
+                emptyList()
             }
         }
     }

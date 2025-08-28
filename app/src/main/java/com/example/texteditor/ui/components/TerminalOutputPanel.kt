@@ -20,12 +20,13 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.SpanStyle  // Correct import
+import kotlinx.coroutines.delay
 
 @Composable
 fun TerminalOutputPanel(
     output: String?,
     isCompiling: Boolean,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit,  // Keep this parameter for compatibility but don't use it
     onClearOutput: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -35,11 +36,11 @@ fun TerminalOutputPanel(
             .height(300.dp)
             .padding(8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF1E1E1E) // Dark terminal background
+            containerColor = Color(0xFF1E1E1E)
         )
     ) {
         Column {
-            // Header
+            // Header - remove the close button
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -92,7 +93,7 @@ fun TerminalOutputPanel(
                         )
                     }
                     
-                    // Close button
+                    // Close button - add this back
                     IconButton(
                         onClick = onDismiss,
                         modifier = Modifier.size(32.dp)
@@ -183,12 +184,35 @@ fun TerminalOutputPanel(
                             .verticalScroll(scrollState)
                     )
                 } else if (isCompiling) {
-                    Text(
-                        text = "> Compiling and executing code...",
-                        color = Color.Yellow,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 13.sp
-                    )
+                    // Animated compiling message
+                    var dots by remember { mutableStateOf("") }
+                    
+                    LaunchedEffect(isCompiling) {
+                        while (isCompiling) {
+                            dots = when (dots) {
+                                "" -> "."
+                                "." -> ".."
+                                ".." -> "..."
+                                else -> ""
+                            }
+                            delay(500) // Update every 500ms
+                        }
+                    }
+                    
+                    Column {
+                        Text(
+                            text = "> Compiling and executing code$dots",
+                            color = Color.Yellow,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 13.sp
+                        )
+                        Text(
+                            text = "> Please wait...",
+                            color = Color.Gray,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 12.sp
+                        )
+                    }
                 } else {
                     Text(
                         text = "> Ready. Press 'Compile & Run' to execute your code.",

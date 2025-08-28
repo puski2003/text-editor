@@ -174,12 +174,12 @@ fun TextEditorScreen(
             }
             
             Column(modifier = Modifier.fillMaxWidth()) {
-                // Show terminal output panel at the bottom
+                // Show terminal output panel at the bottom only when visible
                 if (isTerminalVisible) {
                     TerminalOutputPanel(
                         output = terminalOutput,
                         isCompiling = isCompiling,
-                        onDismiss = { viewModel.hideTerminal() },
+                        onDismiss = { viewModel.hideTerminal() }, // Re-enable hiding
                         onClearOutput = { viewModel.clearTerminalOutput() }
                     )
                 }
