@@ -136,8 +136,8 @@ fun TextEditorScreen(
                         FileExplorer(
                             files = files,
                             onFileClick = { fileName, filePath -> viewModel.openFile(fileName, filePath, context) },
-                            onCreateFile = { fileName -> viewModel.createNewFile(fileName, context) },
-                            onCreateDirectory = { dirName -> viewModel.createNewDirectory(dirName, context) },
+                            onCreateFile = { fileName, parentPath -> viewModel.createNewFile(fileName, context, parentPath) },
+                            onCreateDirectory = { dirName, parentPath -> viewModel.createNewDirectory(dirName, context, parentPath) },
                             onOpenDirectory = { 
                                 // Launch the system directory picker
                                 directoryPickerLauncher.launch(null)

@@ -253,7 +253,7 @@ class TextEditorViewModel : ViewModel() {
         }
     }
     
-    fun createNewFile(fileName: String, context: Context? = null) {
+    fun createNewFile(fileName: String, context: Context? = null, parentPath: String? = null) {
         viewModelScope.launch {
             try {
                 val workspaceUri = _currentWorkspaceUri.value
@@ -262,28 +262,38 @@ class TextEditorViewModel : ViewModel() {
                 if (workspaceUri != null && context != null) {
                     // Create file using DocumentFile API
                     val uri = Uri.parse(workspaceUri)
-                    val documentFile = DocumentFile.fromTreeUri(context, uri)
+                    val documentFile = if (parentPath != null) {
+                        // Create in specific folder
+                        val parentUri = Uri.parse(parentPath)
+                        DocumentFile.fromTreeUri(context, parentUri)
+                    } else {
+                        // Create in root workspace
+                        DocumentFile.fromTreeUri(context, uri)
+                    }
 
                     if (documentFile != null) {
-                        // Use the correct MIME type based on file extension
                         val mimeType = getMimeTypeFromFileName(fileName)
                         val newFile = documentFile.createFile(mimeType, fileName)
                         if (newFile != null) {
                             refreshFileExplorerFromUri(context)
                             openFileFromUri(context, newFile.uri.toString())
-
                         } else {
                             _statusMessage.value = "Failed to create file: $fileName"
                         }
                     }
                 } else if (workspaceDir != null) {
                     // Create file using regular File API
-                    val newFile = File(workspaceDir, fileName)
+                    val targetDir = if (parentPath != null) {
+                        File(parentPath)
+                    } else {
+                        File(workspaceDir)
+                    }
+                    
+                    val newFile = File(targetDir, fileName)
                     if (!newFile.exists()) {
                         newFile.createNewFile()
                         refreshFileExplorer()
                         openFileFromPath(newFile.absolutePath)
-
                     } else {
                         _statusMessage.value = "File already exists: $fileName"
                     }
@@ -296,7 +306,7 @@ class TextEditorViewModel : ViewModel() {
         }
     }
 
-    fun createNewDirectory(dirName: String, context: Context? = null) {
+    fun createNewDirectory(dirName: String, context: Context? = null, parentPath: String? = null) {
         try {
             val workspaceUri = _currentWorkspaceUri.value
             val workspaceDir = _currentWorkspaceDir.value
@@ -304,7 +314,14 @@ class TextEditorViewModel : ViewModel() {
             if (workspaceUri != null && context != null) {
                 // Create directory using DocumentFile API
                 val uri = Uri.parse(workspaceUri)
-                val documentFile = DocumentFile.fromTreeUri(context, uri)
+                val documentFile = if (parentPath != null) {
+                    // Create in specific folder
+                    val parentUri = Uri.parse(parentPath)
+                    DocumentFile.fromTreeUri(context, parentUri)
+                } else {
+                    // Create in root workspace
+                    DocumentFile.fromTreeUri(context, uri)
+                }
 
                 if (documentFile != null) {
                     val newDir = documentFile.createDirectory(dirName)
@@ -317,11 +334,17 @@ class TextEditorViewModel : ViewModel() {
                 }
             } else if (workspaceDir != null) {
                 // Create directory using regular File API
-                val newDir = File(workspaceDir, dirName)
+                val targetDir = if (parentPath != null) {
+                    File(parentPath)
+                } else {
+                    File(workspaceDir)
+                }
+                
+                val newDir = File(targetDir, dirName)
                 if (!newDir.exists()) {
                     newDir.mkdirs()
                     refreshFileExplorer()
-
+                    _statusMessage.value = "Created directory: $dirName"
                 } else {
                     _statusMessage.value = "Directory already exists: $dirName"
                 }

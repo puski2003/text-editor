@@ -31,9 +31,9 @@ import com.example.texteditor.model.FileItem
 @Composable
 fun FileExplorer(
     files: List<FileItem>,
-    onFileClick: (String, String) -> Unit, // Remove Context parameter
-    onCreateFile: (String) -> Unit, // Remove Context parameter
-    onCreateDirectory: (String) -> Unit, // Remove Context parameter
+    onFileClick: (String, String) -> Unit,
+    onCreateFile: (String, String?) -> Unit, // Add parentPath parameter
+    onCreateDirectory: (String, String?) -> Unit, // Add parentPath parameter
     onOpenDirectory: () -> Unit,
     currentWorkspaceDir: String?,
     modifier: Modifier = Modifier
@@ -46,6 +46,16 @@ fun FileExplorer(
     var selectedItems by remember { mutableStateOf(setOf<String>()) }
     var showContextMenu by remember { mutableStateOf(false) }
     var contextMenuItem by remember { mutableStateOf<FileItem?>(null) }
+    
+    // Track expanded folders to determine context for new files
+    var expandedFolders by remember { mutableStateOf(setOf<String>()) }
+    var createInFolder by remember { mutableStateOf<String?>(null) }
+
+    // Function to find the deepest expanded folder
+    fun findCreateContext(): String? {
+        // Find the most recently expanded folder or the deepest one
+        return expandedFolders.lastOrNull()
+    }
 
     Column(
         modifier = modifier
@@ -70,7 +80,10 @@ fun FileExplorer(
 
             Row {
                 IconButton(
-                    onClick = { showCreateFileDialog = true },
+                    onClick = { 
+                        createInFolder = findCreateContext()
+                        showCreateFileDialog = true 
+                    },
                     modifier = Modifier.size(24.dp)
                 ) {
                     Icon(
@@ -82,7 +95,10 @@ fun FileExplorer(
                 }
 
                 IconButton(
-                    onClick = { showCreateDirDialog = true },
+                    onClick = { 
+                        createInFolder = findCreateContext()
+                        showCreateDirDialog = true 
+                    },
                     modifier = Modifier.size(24.dp)
                 ) {
                     Icon(
@@ -122,6 +138,17 @@ fun FileExplorer(
             }
         }
 
+        // Show context info when creating in a folder
+        if (createInFolder != null) {
+            val folderName = java.io.File(createInFolder!!).name
+            Text(
+                text = "Creating in: $folderName",
+                color = Color.Yellow,
+                fontSize = 11.sp,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+            )
+        }
+
         // Selection count
         if (selectedItems.isNotEmpty()) {
             Text(
@@ -158,7 +185,7 @@ fun FileExplorer(
             items(files) { file ->
                 FileTreeItem(
                     file = file,
-                    onFileClick = onFileClick as (String, String) -> Unit,
+                    onFileClick = onFileClick,
                     onLongPress = { item ->
                         contextMenuItem = item
                         showContextMenu = true
@@ -169,6 +196,14 @@ fun FileExplorer(
                             selectedItems + path
                         } else {
                             selectedItems - path
+                        }
+                    },
+                    expandedFolders = expandedFolders,
+                    onExpandedChange = { path, isExpanded ->
+                        expandedFolders = if (isExpanded) {
+                            expandedFolders + path
+                        } else {
+                            expandedFolders - path
                         }
                     },
                     level = 0
@@ -271,26 +306,34 @@ fun FileExplorer(
     // Create file dialog
     if (showCreateFileDialog) {
         CreateItemDialog(
-            title = "Create New File",
+            title = if (createInFolder != null) "Create New File in ${java.io.File(createInFolder!!).name}" else "Create New File",
             placeholder = "Enter file name (e.g., script.js, readme.md)",
             onConfirm = { fileName ->
-                onCreateFile(fileName)
+                onCreateFile(fileName, createInFolder)
                 showCreateFileDialog = false
+                createInFolder = null
             },
-            onDismiss = { showCreateFileDialog = false }
+            onDismiss = { 
+                showCreateFileDialog = false
+                createInFolder = null
+            }
         )
     }
 
     // Create directory dialog
     if (showCreateDirDialog) {
         CreateItemDialog(
-            title = "Create New Directory",
+            title = if (createInFolder != null) "Create New Directory in ${java.io.File(createInFolder!!).name}" else "Create New Directory",
             placeholder = "Enter directory name",
             onConfirm = { dirName ->
-                onCreateDirectory(dirName)
+                onCreateDirectory(dirName, createInFolder)
                 showCreateDirDialog = false
+                createInFolder = null
             },
-            onDismiss = { showCreateDirDialog = false }
+            onDismiss = { 
+                showCreateDirDialog = false
+                createInFolder = null
+            }
         )
     }
 }
@@ -303,10 +346,12 @@ fun FileTreeItem(
     onLongPress: (FileItem) -> Unit,
     selectedItems: Set<String>,
     onSelectionChange: (String, Boolean) -> Unit,
+    expandedFolders: Set<String>,
+    onExpandedChange: (String, Boolean) -> Unit,
     level: Int
 ) {
     val context = LocalContext.current
-    var expanded by remember { mutableStateOf(false) }
+    val isExpanded = expandedFolders.contains(file.path)
     val isSelected = selectedItems.contains(file.path)
 
     Column {
@@ -324,7 +369,7 @@ fun FileTreeItem(
                         } else {
                             // Normal click behavior
                             if (file.isDirectory) {
-                                expanded = !expanded
+                                onExpandedChange(file.path, !isExpanded)
                             } else {
                                 onFileClick(file.name, file.path)
                             }
@@ -339,7 +384,7 @@ fun FileTreeItem(
         ) {
             if (file.isDirectory) {
                 Icon(
-                    imageVector = if (expanded) ImageVector.vectorResource(id = R.drawable.outline_expand_content_24) else Icons.Default.KeyboardArrowRight,
+                    imageVector = if (isExpanded) ImageVector.vectorResource(id = R.drawable.outline_expand_content_24) else Icons.Default.KeyboardArrowRight,
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(16.dp)
@@ -350,7 +395,7 @@ fun FileTreeItem(
             
             Icon(
                 imageVector = if (file.isDirectory) {
-                    if (expanded) ImageVector.vectorResource(id = R.drawable.outline_folder_open_24) else ImageVector.vectorResource(id = R.drawable.outline_folder_24)
+                    if (isExpanded) ImageVector.vectorResource(id = R.drawable.outline_folder_open_24) else ImageVector.vectorResource(id = R.drawable.outline_folder_24)
                 } else {
                     getFileIcon(file.name)
                 },
@@ -378,7 +423,7 @@ fun FileTreeItem(
             }
         }
         
-        if (file.isDirectory && expanded) {
+        if (file.isDirectory && isExpanded) {
             file.children.forEach { child ->
                 FileTreeItem(
                     file = child,
@@ -386,6 +431,8 @@ fun FileTreeItem(
                     onLongPress = onLongPress,
                     selectedItems = selectedItems,
                     onSelectionChange = onSelectionChange,
+                    expandedFolders = expandedFolders,
+                    onExpandedChange = onExpandedChange,
                     level = level + 1
                 )
             }
